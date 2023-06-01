@@ -18,7 +18,7 @@
   </head>
   <body>
     <%- include('partials/_header') %>
-    
+
     <main style="margin: 1em;">
       <h3>My URLs</h3>
       <table class="table">
@@ -33,6 +33,11 @@
             <tr>
               <td><%= id %></td>
               <td><%= urls[id] %></td>
+              <td>
+                <form action=<%= `/urls/${id}/delete` %> method="POST">
+                <button type="submit" class="btn btn-danger">Delete</button>
+                </form>
+              </td>
             </tr>
           <% } %>
         </tbody>
