@@ -5,7 +5,7 @@ app.set("view engine", "ejs");
 app.use(express.urlencoded({ extended: true }));
 
 const generateRandomString = function() {
-  return Math.random().toString(36).substring(0,6);
+  return Math.random().toString(36).substring(2,8);
 }
 
 const urlDatabase = {
@@ -25,14 +25,14 @@ app.get("/urls/new", (req, res) => {
 
 app.post("/urls", (req, res) => {
   console.log(req.body); // Log the POST request body to the console
-  const newTinyURL = generateRandomString();
-  urlDatabase[newTinyURL] = req.body.longURL
-  res.redirect(`/urls/${newTinyURL}`)
+  const id = generateRandomString();
+  urlDatabase[id] = req.body.longURL
+  res.redirect(`/urls/${id}`)
 });
 
 app.get("/urls/:id", (req, res) => {
-  const templateVars = { id: req.params.id, longURL: urlDatabase[req.params.id] };
-  res.render("urls_show", templateVars);
+  const longURL = urlDatabase[req.params.id];
+  res.redirect(longURL);
 });
 
 app.get("/", (req, res) => {
