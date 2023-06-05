@@ -13,6 +13,11 @@ const urlDatabase = {
   "9sm5xK": "http://www.google.com"
 };
 
+app.post("/login", (req, res) => {
+  res.cookie('username', `${req.body.username}`)
+  res.redirect('/urls')
+})
+
 app.post("/urls/:id/delete", (req, res) => {
   delete urlDatabase[req.params.id]
   res.redirect('/urls')
@@ -53,7 +58,8 @@ app.get("/", (req, res) => {
 });
 
 
-
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);
 });
+
+
