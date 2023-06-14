@@ -20,6 +20,9 @@ const userLookup = function(useridCookie) {
 }
 
 const userRegister = function(email, password) {
+  if (!password) {
+    return "badpass";
+  }
   for (const [key, value] of Object.entries(users)) {
     if (users[key].email === email) {
       return "bademail";
@@ -76,11 +79,14 @@ app.post("/logout", (req, res) => {
 
 app.post("/register", (req, res) => {
   const status = userRegister(req.body.email, req.body.password);
-  if (status !== "bademail") {
+  if (status !== "bademail" && status !== "badpass") {
     res.cookie('userid', `${status}`)
     res.redirect('/urls')
   }
   if (status === "bademail") {
+    res.redirect(400)
+  }
+  if (status === "badpass") {
     res.redirect(400)
   }
 });
