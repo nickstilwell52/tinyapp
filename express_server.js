@@ -2,6 +2,7 @@ const express = require("express");
 const cookieParser = require("cookie-parser");
 const { __express } = require("ejs");
 const morgan = require('morgan')
+const bcrypt = require("bcryptjs");
 const app = express();
 const PORT = 8080; // default port 8080
 app.set("view engine", "ejs");
@@ -42,32 +43,39 @@ const doesUserOwnUrl = function(req) {
 
 const userRegister = function(email, password) {
   if (!password) {
-    return "badpass";
+    return {isBurnt: "badpass"};
   }
   for (const [key, value] of Object.entries(users)) {
     if (users[key].email === email) {
-      return "bademail";
+      return {isBurnt: "bademail"};
     }
   }
   const id = generateRandomString();
   users[id] = {
     id: id,
     email: email,
-    password: password
+    password: bcrypt.hashSync(password, 10)
   };
-  return true;
+  return {cookie: users[id].id};
 }
 
 const userLogin = function(email, password) {
   for (const [key, value] of Object.entries(users)) {
-    if (users[key].email === email && users[key].password === password) {
-      return users[key].id;
-    } else if (users[key].email === email && users[key].password !== password) {
-      return "badpass";
+    if (users[key].email === email && bcrypt.compareSync(password, users[key].password)) {
+      return {cookie: users[key].id};
+    } else if (users[key].email === email && !bcrypt.compareSync(password, users[key].password)) {
+      return {isBurnt: "badpass"};
     }
   }
-  return "bademail";
+  return {isBurnt: "bademail"} ;
 }
+
+/* example of the cookie, the keys are mutually exclusive
+const cookieState = {
+  cookie: asdf
+  isBurnt: badpass
+}
+*/
 
 const isLoggedIn = function(req) {
   if (req.cookies["userid"]) {
@@ -102,17 +110,17 @@ const users = {
   userRandomID: {
     id: "userRandomID",
     email: "user@example.com",
-    password: "purple-monkey-dinosaur",
+    password: bcrypt.hashSync("purple-monkey-dinosaur", 10),
   },
   user2RandomID: {
     id: "user2RandomID",
     email: "user2@example.com",
-    password: "dishwasher-funk",
+    password: bcrypt.hashSync("dishwasher-funk", 10),
   },
   123: {
     id: "123",
     email: "a@a.a",
-    password: "a",
+    password: bcrypt.hashSync("a", 10),
   },
 };
 
@@ -122,27 +130,24 @@ app.post("/logout", (req, res) => {
 });
 
 app.post("/register", (req, res) => {
-  const status = userRegister(req.body.email, req.body.password);
-  if (status !== "bademail" && status !== "badpass") {
-    res.cookie('userid', `${status}`)
+  const cookieState = userRegister(req.body.email, req.body.password);
+  if (!cookieState.isBurnt) {
+    res.cookie('userid', `${cookieState.cookie}`)
     res.redirect('/urls/new')
   }
-  if (status === "bademail") {
-    res.sendStatus(400)
-  }
-  if (status === "badpass") {
-    res.sendStatus(400)
+  else {
+    res.sendStatus(400,`${cookieState.isBurnt}`)
   }
 });
 
 app.post("/login", (req, res) => {
-  const status = userLogin(req.body.email, req.body.password);
-  if (status !== "bademail" && status !== "badpass") {
-    res.cookie('userid', `${status}`)
-    res.redirect('/urls')
+  const cookieState = userLogin(req.body.email, req.body.password);
+  if (!cookieState.isBurnt) {
+    res.cookie('userid', `${cookieState.cookie}`)
+    res.redirect('/urls/new')
   }
-  if (status === "bademail" || status === "badpass") {
-    res.redirect(400)
+  else {
+    res.sendStatus(400,`${cookieState.isBurnt}`)
   }
 });
 
@@ -220,8 +225,7 @@ app.get("/u/:id", (req, res) => {
   try {
   const longURL = urlDatabase[req.params.id].longURL;
   res.redirect(longURL);
-  }
-  catch {
+  } catch {
     res.status(404).send('error, shortened URL not found')
   }
 });
