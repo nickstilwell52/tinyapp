@@ -31,6 +31,15 @@ const userUrlsLookup = function(id) {
   return urlsForUser;
 }
 
+const doesUserOwnUrl = function(req) {
+  const urlsOfUser = userUrlsLookup(req.cookies["userid"]);
+  if (urlsOfUser.hasOwnProperty(req.params.id)) {
+    return true
+  } else {
+    return false
+  }
+}
+
 const userRegister = function(email, password) {
   if (!password) {
     return "badpass";
@@ -160,8 +169,12 @@ app.get("/register", (req, res) => {
 });
 
 app.post("/urls/:id/delete", (req, res) => {
-  delete urlDatabase[req.params.id]
-  res.redirect('/urls')
+  if (!doesUserOwnUrl(req)) {
+    res.redirect(400, "/login")
+  } else {
+    delete urlDatabase[req.params.id]
+    res.redirect('/urls')
+  }
 });
 
 app.get("/urls", (req, res) => {
@@ -188,12 +201,19 @@ app.get("/urls/new", (req, res) => {
 });
 
 app.get("/urls/:id", (req, res) => {
-  const templateVars = {
-    user: userLookup(req.cookies["userid"]),
-    id: req.params.id,
-    longURL: urlDatabase[req.params.id].longURL
-  };
-  res.render("urls_show", templateVars);
+  if (!isLoggedIn(req)) {
+    res.redirect(400, "/login")
+  }
+  else if (!doesUserOwnUrl(req)) {
+    res.redirect(400, "/login")
+  } else {
+    const templateVars = {
+      user: userLookup(req.cookies["userid"]),
+      id: req.params.id,
+      longURL: urlDatabase[req.params.id].longURL
+    };
+    res.render("urls_show", templateVars);
+  }
 });
 
 app.get("/u/:id", (req, res) => {
@@ -215,13 +235,20 @@ app.post("/urls", (req, res) => {
     longURL: req.body.longURL,
     userID: req.cookies["userid"],
   },
-  res.redirect(`/u/${id}`)
+  res.redirect('/urls')
   }
 });
 
 app.post("/urls/:id", (req, res) => {
-  urlDatabase[req.params.id] = req.body.longURL
+  if (!isLoggedIn(req)) {
+    res.status(400).send('bad request, not signed in.')
+  }
+  else if (!doesUserOwnUrl(req)) {
+    res.status(400).send('bad request, not signed in.')
+  } else {
+  urlDatabase[req.params.id].longURL = req.body.longURL
   res.redirect('/urls')
+  }
 });
 
 app.get("/", (req, res) => {
