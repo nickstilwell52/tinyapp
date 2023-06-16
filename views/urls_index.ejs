@@ -25,6 +25,7 @@
         <thead>
           <tr>
             <th scope="col">Short URL ID</th>
+            <th scope="col">Copy link</th>
             <th scope="col">Long URL</th>
           </tr>
         </thead>
@@ -32,6 +33,7 @@
           <% for (let id in urls) { %>
             <tr>
               <td><%= id %></td>
+              <td><button onclick="copyToClipboard('<%=id%>')">Copy URL</button></td>
               <td><%= urls[id].longURL %></td>
               <td>
                 <form action=<%= `/urls/${id}` %> method="GET">
@@ -64,5 +66,10 @@
       integrity="sha384-JjSmVgyd0p3pXB1rRibZUAYoIIy6OrQ6VrjIEaFf/nJGzIxFDsf4x0xIM+B07jRM"
       crossorigin="anonymous"
     ></script>
+    <script type ="text/javascript">
+      const copyToClipboard = function(id) {
+      navigator.clipboard.writeText(`http://localhost:8080/u/${id}`);
+    }
+    </script>
   </body>
 </html>

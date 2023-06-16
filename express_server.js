@@ -1,5 +1,5 @@
 const express = require("express");
-const cookieParser = require("cookie-parser");
+const cookieSession = require("cookie-session");
 const { __express } = require("ejs");
 const morgan = require('morgan')
 const bcrypt = require("bcryptjs");
@@ -7,7 +7,9 @@ const app = express();
 const PORT = 8080; // default port 8080
 app.set("view engine", "ejs");
 app.use(express.urlencoded({ extended: true }));
-app.use(cookieParser())
+app.use(cookieSession({
+  secret: 'cookierecipe'
+}))
 app.use(morgan('dev'));
 
 const generateRandomString = function() {
@@ -33,7 +35,7 @@ const userUrlsLookup = function(id) {
 }
 
 const doesUserOwnUrl = function(req) {
-  const urlsOfUser = userUrlsLookup(req.cookies["userid"]);
+  const urlsOfUser = userUrlsLookup(req.session.userid);
   if (urlsOfUser.hasOwnProperty(req.params.id)) {
     return true
   } else {
@@ -56,13 +58,13 @@ const userRegister = function(email, password) {
     email: email,
     password: bcrypt.hashSync(password, 10)
   };
-  return {cookie: users[id].id};
+  return {id: id};
 }
 
 const userLogin = function(email, password) {
   for (const [key, value] of Object.entries(users)) {
     if (users[key].email === email && bcrypt.compareSync(password, users[key].password)) {
-      return {cookie: users[key].id};
+      return {id: users[key].id};
     } else if (users[key].email === email && !bcrypt.compareSync(password, users[key].password)) {
       return {isBurnt: "badpass"};
     }
@@ -72,14 +74,14 @@ const userLogin = function(email, password) {
 
 /* example of the cookie, the keys are mutually exclusive
 const cookieState = {
-  cookie: asdf
+  id: asdf
   isBurnt: badpass
 }
 */
 
 const isLoggedIn = function(req) {
-  if (req.cookies["userid"]) {
-    if (userLookup(req.cookies["userid"])) {
+  if (req.session.userid) {
+    if (userLookup(req.session.userid)) {
     return true;
     }
   } else {
@@ -125,14 +127,14 @@ const users = {
 };
 
 app.post("/logout", (req, res) => {
-  res.clearCookie('userid')
-  res.redirect('/urls')
+  req.session = null
+  res.redirect('/login')
 });
 
 app.post("/register", (req, res) => {
   const cookieState = userRegister(req.body.email, req.body.password);
   if (!cookieState.isBurnt) {
-    res.cookie('userid', `${cookieState.cookie}`)
+    req.session.userid = `${cookieState.id}`;
     res.redirect('/urls/new')
   }
   else {
@@ -143,7 +145,7 @@ app.post("/register", (req, res) => {
 app.post("/login", (req, res) => {
   const cookieState = userLogin(req.body.email, req.body.password);
   if (!cookieState.isBurnt) {
-    res.cookie('userid', `${cookieState.cookie}`)
+    req.session.userid = `${cookieState.id}`;
     res.redirect('/urls/new')
   }
   else {
@@ -154,7 +156,7 @@ app.post("/login", (req, res) => {
 app.get("/login", (req, res) => {
   if (!isLoggedIn(req)) {
     const templateVars = { 
-      user: userLookup(req.cookies["userid"]),
+      user: userLookup(req.session.userid),
     };
     res.render("login", templateVars);
   } else {
@@ -164,7 +166,7 @@ app.get("/login", (req, res) => {
 
 app.get("/register", (req, res) => {
   const templateVars = {
-    user: userLookup(req.cookies["userid"]),
+    user: userLookup(req.session.userid),
   };
   if (!isLoggedIn(req)) {
   res.render("register", templateVars);
@@ -184,8 +186,8 @@ app.post("/urls/:id/delete", (req, res) => {
 
 app.get("/urls", (req, res) => {
   const templateVars = { 
-    user: userLookup(req.cookies["userid"]),
-    urls: userUrlsLookup(req.cookies["userid"])
+    user: userLookup(req.session.userid),
+    urls: userUrlsLookup(req.session.userid)
   };
   if (!isLoggedIn(req)) {
     res.redirect("/login")
@@ -196,7 +198,7 @@ app.get("/urls", (req, res) => {
 
 app.get("/urls/new", (req, res) => {
   const templateVars = {
-    user: userLookup(req.cookies["userid"]),
+    user: userLookup(req.session.userid),
   }
   if (!isLoggedIn(req)) {
     res.redirect("/login")
@@ -213,7 +215,7 @@ app.get("/urls/:id", (req, res) => {
     res.redirect(400, "/login")
   } else {
     const templateVars = {
-      user: userLookup(req.cookies["userid"]),
+      user: userLookup(req.session.userid),
       id: req.params.id,
       longURL: urlDatabase[req.params.id].longURL
     };
@@ -237,7 +239,7 @@ app.post("/urls", (req, res) => {
   const id = generateRandomString();
   urlDatabase[id] = {
     longURL: req.body.longURL,
-    userID: req.cookies["userid"],
+    userID: req.session.userid,
   },
   res.redirect('/urls')
   }
@@ -262,5 +264,3 @@ app.get("/", (req, res) => {
 app.listen(PORT, () => {
   console.log(`Example app listening on port ${PORT}!`);
 });
-
-
