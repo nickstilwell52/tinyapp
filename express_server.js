@@ -1,7 +1,6 @@
 const express = require("express");
 const cookieSession = require("cookie-session");
 const { __express } = require("ejs");
-const morgan = require('morgan')
 const bcrypt = require("bcryptjs");
 const app = express();
 const PORT = 8080; // default port 8080
@@ -10,7 +9,6 @@ app.use(express.urlencoded({ extended: true }));
 app.use(cookieSession({
   secret: 'cookierecipe'
 }))
-app.use(morgan('dev'));
 
 const generateRandomString = function() {
   return Math.random().toString(36).substring(2,8);
